@@ -18,8 +18,8 @@ const LaserPrinter = () => {
   const [imageDetails, setImageDetails] = useState([]);
 
   useEffect(() => {
-    const unit = "mm";
-    const format = [150, 50];
+    const unit = "in";
+    const format = [19, 1.75];
     const orientation = "landscape";
     const doc = new jsPDF(orientation, unit, format);
     if (textDetails?.length > 0) {
