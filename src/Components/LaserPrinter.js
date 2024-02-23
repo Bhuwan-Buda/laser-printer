@@ -1,73 +1,85 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { jsPDF } from "jspdf";
 import { v4 as uuidv4 } from "uuid";
 import Modal from "./Modal/Modal";
 import { FaEdit, FaPrint, FaTrash } from "react-icons/fa";
 import { CiImageOn, CiText } from "react-icons/ci";
 import { FiRefreshCw } from "react-icons/fi";
-import { Stage, Layer, Text, Image, Transformer } from "react-konva";
+import { Stage, Layer, Text, Image } from "react-konva";
 
 const LaserPrinter = () => {
-  const [url, setUrl] = useState("");
   const [print, setPrint] = useState(false);
 
   const [textInformation, setTextInformation] = useState({
     text: "",
     fontSize: 32,
     x: 100,
-    y: 20,
+    y: 10,
   });
   const [imageInformation, setImageInformation] = useState({
     image: "",
     width: 100,
     height: 100,
-    x: 300,
+    x: 100,
     y: 10,
   });
   const [textDetails, setTextDetails] = useState([]);
-  console.log(textDetails, "textDetails");
   const [imageDetails, setImageDetails] = useState([]);
   const [showTextModal, setShowTextModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
 
-  // useEffect(() => {
-  //   if (print && (imageDetails?.length > 0 || textDetails?.length > 0)) {
-  //     const unit = "mm";
-  //     const format = [482.6, 44.45];
-  //     const orientation = "landscape";
-  //     const doc = new jsPDF(orientation, unit, format);
-  //     if (textDetails?.length > 0) {
-  //       for (let i = 0; i < textDetails?.length; i++) {
-  //         console.log(textDetails[i], "htisd");
-  //         doc.setFontSize(textDetails[i].fontSize);
-  //         doc.text(
-  //           textDetails[i].text,
-  //           Number(textDetails[i].left),
-  //           Number(textDetails[i].top)
-  //         );
-  //       }
-  //     }
-  //     if (imageDetails?.length > 0) {
-  //       for (let i = 0; i < imageDetails?.length; i++) {
-  //         doc.addImage(
-  //           imageDetails[i].image,
-  //           "*",
-  //           Number(imageDetails[i].left),
-  //           Number(imageDetails[i].top),
-  //           Number(imageDetails[i].width),
-  //           Number(imageDetails[i].height)
-  //         );
-  //       }
-  //     }
-  //     doc.setProperties({
-  //       title: "Laser Printer",
-  //     });
-  //     doc.setTextColor(255, 255, 255);
-  //     doc.autoPrint();
-  //     window.open(URL.createObjectURL(doc.output("blob")), "_blank");
-  //     setPrint(false);
-  //   }
-  // }, [textDetails, imageDetails, print, setPrint]);
+  function pixelsToMillimeters(pixels, dpi = 96) {
+    // 1 inch = 25.4 mm
+    const inches = pixels / dpi;
+    const millimeters = inches * 25.4;
+    return millimeters;
+  }
+  useEffect(() => {
+    if (print && (imageDetails?.length > 0 || textDetails?.length > 0)) {
+      const unit = "mm";
+      const format = [482.6, 44.45];
+      const orientation = "landscape";
+      const doc = new jsPDF(orientation, unit, format);
+      if (textDetails?.length > 0) {
+        for (let i = 0; i < textDetails?.length; i++) {
+          const updatedLeft = pixelsToMillimeters(Number(textDetails[i].x));
+          const updatedTop = pixelsToMillimeters(Number(textDetails[i].y));
+          doc.setFontSize(textDetails[i].fontSize);
+          doc.text(
+            textDetails[i].text,
+            Number(updatedLeft),
+            Number(updatedTop)
+          );
+        }
+      }
+      if (imageDetails?.length > 0) {
+        for (let i = 0; i < imageDetails?.length; i++) {
+          const updatedLeft = pixelsToMillimeters(Number(imageDetails[i].x));
+          const updatedTop = pixelsToMillimeters(Number(imageDetails[i].y));
+          const updatedWidth = pixelsToMillimeters(
+            Number(imageDetails[i].width)
+          );
+          const updatedHeight = pixelsToMillimeters(
+            Number(imageDetails[i].height)
+          );
+          doc.addImage(
+            imageDetails[i].image,
+            "*",
+            Number(updatedLeft),
+            Number(updatedTop),
+            Number(updatedWidth),
+            Number(updatedHeight)
+          );
+        }
+      }
+      doc.setProperties({
+        title: "Laser Printer",
+      });
+      doc.autoPrint();
+      window.open(URL.createObjectURL(doc.output("blob")), "_blank");
+      setPrint(false);
+    }
+  }, [textDetails, imageDetails, print, setPrint]);
 
   const handleSaveText = () => {
     if (textInformation?.text !== "") {
@@ -87,6 +99,7 @@ const LaserPrinter = () => {
       setShowTextModal(false);
     }
   };
+
   const handleSaveImage = () => {
     if (imageInformation?.image) {
       const reader = new FileReader();
@@ -123,6 +136,7 @@ const LaserPrinter = () => {
     const updated = textDetails?.filter((detail) => detail.unique !== unique);
     setTextDetails(updated);
   };
+
   const handleRemoveImage = (unique) => {
     const updated = imageDetails?.filter((detail) => detail.unique !== unique);
     setImageDetails(updated);
@@ -139,6 +153,7 @@ const LaserPrinter = () => {
     setTextDetails(filteredTextDetails);
     setShowTextModal(true);
   };
+
   const handleEditImage = (unique) => {
     const specificImageInformation = imageDetails?.find(
       (detail) => detail.unique === unique
@@ -206,15 +221,30 @@ const LaserPrinter = () => {
                       draggable
                       fill="white"
                       onDragEnd={(e) => {
+                        const newX = e.target.x();
+                        const newY = e.target.y();
+
+                        // Ensure the new position is within the stage boundaries
+                        const updatedX = Math.max(
+                          0,
+                          Math.min(newX, 1824 - e.target.width())
+                        );
+                        const updatedY = Math.max(
+                          0,
+                          Math.min(newY, 168 - e.target.height())
+                        );
+
                         const filteredTextDetail = textDetails?.filter(
                           (text) => text.unique !== detail.unique
                         );
+
                         const updatedDetail = {
                           ...detail,
                           isDragging: false,
-                          x: e.target.x(),
-                          y: e.target.y(),
+                          x: updatedX,
+                          y: updatedY,
                         };
+
                         setTextDetails([updatedDetail, ...filteredTextDetail]);
                       }}
                     />
@@ -235,15 +265,30 @@ const LaserPrinter = () => {
                       image={image}
                       draggable
                       onDragEnd={(e) => {
+                        const newX = e.target.x();
+                        const newY = e.target.y();
+
+                        // Ensure the new position is within the stage boundaries
+                        const updatedX = Math.max(
+                          0,
+                          Math.min(newX, 1824 - e.target.width())
+                        );
+                        const updatedY = Math.max(
+                          0,
+                          Math.min(newY, 168 - e.target.height())
+                        );
+
                         const filteredImageDetail = imageDetails?.filter(
                           (image) => image.unique !== detail.unique
                         );
+
                         const updatedDetail = {
                           ...detail,
                           isDragging: false,
-                          x: e.target.x(),
-                          y: e.target.y(),
+                          x: updatedX,
+                          y: updatedY,
                         };
+
                         setImageDetails([
                           updatedDetail,
                           ...filteredImageDetail,
@@ -257,15 +302,6 @@ const LaserPrinter = () => {
         </div>
       </div>
       <div className="d-flex p-0 flex-column justify-content-start align-items-center">
-        {/* <div className="w-100">
-          <iframe
-            title="Laser-Printer"
-            type="application/pdf"
-            width="100%"
-            src={url}
-            height="180px"
-          ></iframe>
-        </div> */}
         <div className="d-flex justify-content-center gap-4 w-100 mt-4">
           <div
             className="text-details border border-success border-2 rounded-1"
