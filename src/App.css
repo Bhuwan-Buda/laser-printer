@@ -1,0 +1,6 @@
+.panel-container {
+  background-image: url("./assets/panel.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
